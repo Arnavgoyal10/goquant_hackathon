@@ -134,8 +134,12 @@ struct LimitOrder
     {
         if (input_amount == 0)
             return false;
-        double current_rate = static_cast<double>(current_output) / static_cast<double>(input_amount);
-        return current_rate >= limit_price;
+
+        // Calculate expected output based on limit price
+        uint64_t expected_output = static_cast<uint64_t>(input_amount * limit_price);
+
+        // Compare actual output vs expected output directly
+        return current_output >= expected_output;
     }
 
     // Check if price meets limit order criteria for a specific amount
@@ -152,16 +156,16 @@ struct LimitOrder
     {
         if (input_amount == 0)
             return 0;
-        
+
         // Calculate how much input we can swap at the current rate
         uint64_t remaining_amount = input_amount - filled_amount;
         if (remaining_amount == 0)
             return 0;
-            
+
         // If current rate meets limit, we can fill the remaining amount
         if (isPriceMet(current_output))
             return remaining_amount;
-            
+
         return 0;
     }
 

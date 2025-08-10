@@ -133,6 +133,18 @@ public:
     // Get exchange rate using get_dy
     uint64_t get_dy(int32_t i, int32_t j, uint64_t dx)
     {
+        // Check if we should use mock mode for demo purposes
+        const char *mock_flag = std::getenv("USE_MOCK_PRICING");
+        bool use_mock = mock_flag && std::string(mock_flag) == "1";
+
+        if (use_mock)
+        {
+            // Mock pricing for demo: return realistic values
+            // Simulate a market where 1 USDC ≈ 0.999 DAI (slight discount)
+            double mock_rate = 0.999;
+            return static_cast<uint64_t>(dx * mock_rate);
+        }
+
         std::string function_signature = "0x5e0d443f";
         std::string encoded_i = encodeUint256(static_cast<uint64_t>(i));
         std::string encoded_j = encodeUint256(static_cast<uint64_t>(j));
@@ -371,6 +383,11 @@ public:
             order.recordPriceCheck(current_output);
 
             std::cout << "💰 IOC Price Check: " << current_output << " output tokens" << std::endl;
+
+            // Debug: Show price comparison
+            uint64_t expected_output = static_cast<uint64_t>(order.input_amount * order.limit_price);
+            std::cout << "🔍 Price Check: Current output = " << current_output << ", Expected output = " << expected_output << std::endl;
+            std::cout << "🔍 Price met? " << (order.isPriceMet(current_output) ? "YES" : "NO") << std::endl;
 
             if (order.isPriceMet(current_output))
             {
@@ -620,13 +637,20 @@ int main(int argc, char **argv)
         else if (const char *env_tif = std::getenv("TIF_POLICY"); env_tif)
             tif_policy = std::string(env_tif);
 
+        // Parse limit price from command line or environment
+        double limit_price = 1.01; // default
+        if (argc >= 7)
+            limit_price = std::stod(argv[6]);
+        else if (const char *env_price = std::getenv("LIMIT_PRICE"); env_price)
+            limit_price = std::stod(env_price);
+
         // Parse additional parameters for GTT
         std::chrono::system_clock::time_point expiry_time;
         if (tif_policy == "GTT")
         {
             int expiry_minutes = 60; // default 1 hour
-            if (argc >= 7)
-                expiry_minutes = std::stoi(argv[6]);
+            if (argc >= 8)
+                expiry_minutes = std::stoi(argv[7]);
             else if (const char *env_expiry = std::getenv("GTT_EXPIRY_MINUTES"); env_expiry)
                 expiry_minutes = std::stoi(env_expiry);
 
@@ -640,25 +664,25 @@ int main(int argc, char **argv)
         if (tif_policy == "GTC")
         {
             order = OrderFactory::createGTC(order_id, SepoliaConfig::Tokens::USDC,
-                                            SepoliaConfig::Tokens::DAI, input_amount, 1.01, 0.005,
+                                            SepoliaConfig::Tokens::DAI, input_amount, limit_price, 0.005,
                                             user_address, private_key);
         }
         else if (tif_policy == "GTT")
         {
             order = OrderFactory::createGTT(order_id, SepoliaConfig::Tokens::USDC,
-                                            SepoliaConfig::Tokens::DAI, input_amount, 1.01, 0.005,
+                                            SepoliaConfig::Tokens::DAI, input_amount, limit_price, 0.005,
                                             expiry_time, user_address, private_key);
         }
         else if (tif_policy == "IOC")
         {
             order = OrderFactory::createIOC(order_id, SepoliaConfig::Tokens::USDC,
-                                            SepoliaConfig::Tokens::DAI, input_amount, 1.01, 0.005,
+                                            SepoliaConfig::Tokens::DAI, input_amount, limit_price, 0.005,
                                             user_address, private_key);
         }
         else if (tif_policy == "FOK")
         {
             order = OrderFactory::createFOK(order_id, SepoliaConfig::Tokens::USDC,
-                                            SepoliaConfig::Tokens::DAI, input_amount, 1.01, 0.005,
+                                            SepoliaConfig::Tokens::DAI, input_amount, limit_price, 0.005,
                                             user_address, private_key);
         }
         else
@@ -685,11 +709,12 @@ int main(int argc, char **argv)
 
         std::cout << "\n📖 USAGE EXAMPLES:" << std::endl;
         std::cout << "  ./build/curve_dex_limit_order_agent                    # GTC order (default)" << std::endl;
-        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 GTC" << std::endl;
-        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 GTT 30" << std::endl;
-        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 IOC" << std::endl;
-        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 FOK" << std::endl;
-        std::cout << "  TIF_POLICY=IOC ./build/curve_dex_limit_order_agent     # Environment variable" << std::endl;
+        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 GTC 1.01" << std::endl;
+        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 GTT 1.01 30" << std::endl;
+        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 IOC 1.01" << std::endl;
+        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 FOK 1.01" << std::endl;
+        std::cout << "  ./build/curve_dex_limit_order_agent 0xPool 1 0 1000000 IOC 2.0  # High limit (cancels)" << std::endl;
+        std::cout << "  TIF_POLICY=IOC LIMIT_PRICE=2.0 ./build/curve_dex_limit_order_agent  # Environment variables" << std::endl;
 
         curl_global_cleanup();
     }
