@@ -394,9 +394,3 @@ hackathon/
 ├── curve_swap_example.cpp               # Original starter code
 └── README.md                            # This file
 ```
-
----
-
-**Good luck with the hackathon challenge! 🎯**
-
-Remember: This is a learning experience. Focus on understanding the concepts and building a solid foundation for future development.

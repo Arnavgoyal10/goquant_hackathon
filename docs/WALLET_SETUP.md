@@ -45,5 +45,3 @@ EXECUTE_ONCHAIN=1 ./build/curve_dex_limit_order_agent
 # Try broadcasting (requires valid RPC & key configured in sepolia_config.h)
 EXECUTE_ONCHAIN=1 BROADCAST_TX=1 RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY ./build/curve_dex_limit_order_agent
 ```
-
-That’s it. Keep the wallet testnet-only for safety.
